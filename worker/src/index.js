@@ -212,6 +212,7 @@ async function transcribe(request, env, cors) {
     }, 200, cors);
   } catch (error) {
     if (quotaError(error)) return json({ code: "DAILY_FREE_QUOTA_EXHAUSTED", message: "The free daily AI allowance is exhausted. Retry after the daily reset." }, 429, cors);
+    console.error("transcribe_error", String(error?.message || error).slice(0, 300));
     return json({ code: "TRANSCRIPTION_FAILED", message: "Transcription failed for this audio segment. Retry it in a moment." }, 502, cors);
   }
 }
@@ -227,10 +228,10 @@ async function makeNotes(request, env, cors) {
   const transcriptText = transcriptForPrompt(transcript);
   if (!transcript.length) return json({ code: "TRANSCRIPT_REQUIRED", message: "A non-empty transcript is required." }, 400, cors);
   if (transcriptText.length > MAX_TRANSCRIPT_CHARS) return json({ code: "TRANSCRIPT_TOO_LARGE", message: "The transcript is too large for one notes request." }, 413, cors);
-  const system = `You create conservative meeting notes from the supplied transcript only. Never invent a decision, owner, deadline, question, or claim. Every list item must cite one or more exact transcript IDs and include a short verbatim quote copied exactly from those cited lines. Use an empty string for an unstated owner or due date. Omit uncertain items. Keep the overview factual and concise. Return JSON matching the provided schema only.`;
+  const system = `You create conservative meeting notes from the supplied transcript only. Never invent a decision, owner, deadline, question, or claim. Every list item must cite one or more exact transcript IDs and include a short verbatim quote copied exactly from those cited lines. Use an empty string for an unstated owner or due date. Omit uncertain items. Put explicit commitments such as \"Name will do X by Y\" in actionItems (owner and due date only when spoken), explicit agreements such as \"we decided\" in decisions, and do not repeat an item in more than one list. Keep the overview factual and concise. Example: the line \"[S0009] Maria will send the budget by Monday.\" produces actionItems: task \"Send the budget\", owner \"Maria\", dueDateText \"Monday\", evidence segmentIds [\"S0009\"] and quote \"Maria will send the budget by Monday\", and must not also appear in discussionPoints. Return JSON matching the provided schema only.`;
   const user = `Meeting title: ${cleanText(body.title, 120) || "Meeting"}\nDate: ${cleanText(body.date, 80)}\nParticipants supplied by organizer: ${cleanText(body.participants, 500)}\n\nTranscript:\n${transcriptText}`;
   try {
-    const result = await env.AI.run(env.NOTES_MODEL || "@cf/meta/llama-3.1-8b-instruct", {
+    const result = await env.AI.run(env.NOTES_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
       messages: [{ role: "system", content: system }, { role: "user", content: user }],
       temperature: 0,
       max_tokens: 4096,
@@ -238,9 +239,10 @@ async function makeNotes(request, env, cors) {
     });
     const notes = parseModelJson(extractModelText(result));
     if (!minimallyValidateNotes(notes)) throw new Error("The note response did not match the expected shape.");
-    return json({ notes, warnings: [], model: env.NOTES_MODEL || "@cf/meta/llama-3.1-8b-instruct" }, 200, cors);
+    return json({ notes, warnings: [], model: env.NOTES_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast" }, 200, cors);
   } catch (error) {
     if (quotaError(error)) return json({ code: "DAILY_FREE_QUOTA_EXHAUSTED", message: "The free daily AI allowance is exhausted. Retry after the daily reset." }, 429, cors);
+    console.error("notes_error", String(error?.message || error).slice(0, 300));
     return json({ code: "NOTES_FAILED", message: "Note generation failed. Your transcript remains saved; retry in a moment." }, 502, cors);
   }
 }
