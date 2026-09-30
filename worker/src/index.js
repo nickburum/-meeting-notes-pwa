@@ -186,7 +186,10 @@ async function transcribe(request, env, cors) {
   if (contentLength > MAX_AUDIO_BYTES + 100_000) return json({ code: "AUDIO_TOO_LARGE", message: "Audio segment is too large." }, 413, cors);
   const form = await request.formData();
   const file = form.get("audio");
-  if (!(file instanceof File) || !file.size) return json({ code: "AUDIO_REQUIRED", message: "An audio file is required." }, 400, cors);
+  if (!file || typeof file === "string" || !file.size) {
+    console.error("audio_missing", typeof file, file && file.size, request.headers.get("content-type"), contentLength);
+    return json({ code: "AUDIO_REQUIRED", message: "An audio file is required." }, 400, cors);
+  }
   if (file.size > MAX_AUDIO_BYTES) return json({ code: "AUDIO_TOO_LARGE", message: "Audio segment is too large." }, 413, cors);
   const language = cleanText(form.get("language"), 20);
   const vocabulary = listText(form.get("vocabulary"), 1000);

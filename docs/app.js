@@ -406,7 +406,9 @@ function renderSegmentStatuses(segments, statusById = {}) {
 async function transcribeSegment(segment) {
   const form = new FormData();
   const extension = segment.mimeType.includes("mp4") ? "m4a" : "webm";
-  form.append("audio", segment.blob, `segment-${segment.index}.${extension}`);
+  const bytes = await segment.blob.arrayBuffer();
+  if (!bytes.byteLength) throw new Error("A saved audio segment is empty. Check the microphone and record again.");
+  form.append("audio", new File([bytes], `segment-${segment.index}.${extension}`, { type: segment.mimeType || "audio/webm" }));
   form.append("segmentId", segment.id);
   form.append("startMs", String(segment.startMs));
   form.append("endMs", String(segment.endMs));
