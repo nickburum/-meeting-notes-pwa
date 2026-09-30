@@ -1,8 +1,8 @@
-const CACHE = "meeting-notes-shell-v1";
+const CACHE = "meeting-notes-shell-v2";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then((cache) => Promise.allSettled(ASSETS.map((asset) => cache.add(asset)))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {

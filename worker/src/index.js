@@ -95,6 +95,15 @@ function cleanText(value, max = 5000) {
   return String(value || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, " ").trim().slice(0, max);
 }
 
+function listText(value, max) {
+  const raw = String(value || "");
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return cleanText(parsed.map((item) => cleanText(item, 100)).filter(Boolean).join(", "), max);
+  } catch {}
+  return cleanText(raw, max);
+}
+
 function audioToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -180,8 +189,8 @@ async function transcribe(request, env, cors) {
   if (!(file instanceof File) || !file.size) return json({ code: "AUDIO_REQUIRED", message: "An audio file is required." }, 400, cors);
   if (file.size > MAX_AUDIO_BYTES) return json({ code: "AUDIO_TOO_LARGE", message: "Audio segment is too large." }, 413, cors);
   const language = cleanText(form.get("language"), 20);
-  const vocabulary = cleanText(form.get("vocabulary"), 1000);
-  const participants = cleanText(form.get("participants"), 300);
+  const vocabulary = listText(form.get("vocabulary"), 1000);
+  const participants = listText(form.get("participants"), 300);
   const promptParts = [participants && `Participant names: ${participants}`, vocabulary && `Preferred spellings: ${vocabulary}`].filter(Boolean);
   const input = {
     audio: audioToBase64(await file.arrayBuffer()),

@@ -77,3 +77,24 @@ test("notes endpoint accepts native structured object output", async () => {
   assert.equal(response.status, 200);
   assert.deepEqual((await response.json()).notes, notes);
 });
+
+test("participant and vocabulary lists become a readable initial prompt", async () => {
+  let captured;
+  const env = { APP_TOKEN: "a-very-long-owner-token", ALLOWED_ORIGINS: "https://example.github.io",
+    AI: { run: async (_m, input) => { captured = input; return { text: "hi", segments: [] }; } } };
+  const form = new FormData();
+  form.append("audio", new File([new Uint8Array([1])], "a.webm"));
+  form.append("participants", JSON.stringify(["Ana", "Ben"]));
+  form.append("vocabulary", JSON.stringify(["Kubernetes"]));
+  await handleRequest(new Request("https://api.example/v1/transcribe", { method: "POST", body: form,
+    headers: { Origin: "https://example.github.io", Authorization: "Bearer a-very-long-owner-token" } }), env);
+  assert.equal(captured.initial_prompt, "Participant names: Ana, Ben. Preferred spellings: Kubernetes");
+});
+
+test("wrong token and disallowed origin are rejected", async () => {
+  const env = { APP_TOKEN: "a-very-long-owner-token", ALLOWED_ORIGINS: "https://example.github.io" };
+  const bad = await handleRequest(new Request("https://api.example/health", { headers: { Origin: "https://example.github.io", Authorization: "Bearer nope" } }), env);
+  assert.equal(bad.status, 401);
+  const origin = await handleRequest(new Request("https://api.example/health", { headers: { Origin: "https://evil.example", Authorization: "Bearer a-very-long-owner-token" } }), env);
+  assert.equal(origin.status, 403);
+});

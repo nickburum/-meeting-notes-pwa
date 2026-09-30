@@ -36,3 +36,9 @@ test("backend has origin, token, size, and quota controls", () => {
   for (const marker of ["ORIGIN_NOT_ALLOWED", "UNAUTHORIZED", "MAX_AUDIO_BYTES", "DAILY_FREE_QUOTA_EXHAUSTED"])
     assert.match(worker, new RegExp(marker));
 });
+
+test("service worker cache is versioned and tolerates failed cache fills", () => {
+  const sw = readFileSync(join(docs, "sw.js"), "utf8");
+  assert.match(sw, /shell-v[2-9]/);
+  assert.match(sw, /allSettled/);
+});

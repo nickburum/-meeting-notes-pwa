@@ -1,6 +1,6 @@
 const DB_NAME = "meeting-notes-pwa";
 const DB_VERSION = 1;
-const SEGMENT_MS = 4 * 60 * 1000;
+const SEGMENT_MS = 2 * 60 * 1000;
 const OVERLAP_MS = 3000;
 const DISCORD_PART_LIMIT = 1850;
 
@@ -434,7 +434,7 @@ async function runPool(items, concurrency, worker, onUpdate) {
 }
 
 function normalizeText(text) {
-  return String(text || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  return String(text || "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
 }
 
 function tokenSimilarity(a, b) {
@@ -519,7 +519,7 @@ async function processSession(sessionId) {
     const validation = validateNotes(notesResponse.notes, currentTranscript);
     currentNotes = validation.notes;
     currentSession.notes = currentNotes;
-    currentSession.warnings = [...(notesResponse.warnings || []), ...validation.warnings];
+    currentSession.warnings = [...(currentSession.warnings || []), ...(notesResponse.warnings || []), ...validation.warnings];
     currentSession.status = "review";
     await dbPut("sessions", currentSession);
     updateProgress(100, "Ready for review");
