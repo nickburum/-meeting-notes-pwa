@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#102a43">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Meeting Notes">
+  <meta name="description" content="Record a meeting and create evidence-linked notes for Discord.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https: http://localhost:*; media-src 'self' blob:; img-src 'self' data:; style-src 'self'; script-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Meeting Notes</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Evidence linked meeting notes</p>
+        <h1>Meeting Notes</h1>
+      </div>
+      <button id="settingsToggle" class="icon-button" type="button" aria-expanded="false" aria-controls="connectionPanel" aria-label="Connection settings">⚙</button>
+    </header>
+
+    <main>
+      <section id="connectionPanel" class="panel settings-panel" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">One time setup</p>
+            <h2>Connection settings</h2>
+          </div>
+          <span id="connectionBadge" class="badge neutral">Not tested</span>
+        </div>
+        <label>Backend URL
+          <input id="apiUrl" inputmode="url" autocomplete="url" placeholder="https://your-worker.workers.dev">
+        </label>
+        <label>Owner token
+          <input id="apiToken" type="password" autocomplete="off" placeholder="Paste your private token">
+        </label>
+        <div class="button-row">
+          <button id="testConnection" class="secondary" type="button">Test connection</button>
+          <button id="saveConnection" class="primary" type="button">Save</button>
+        </div>
+        <p class="help">The token stays in this browser. It is never included in the public website files.</p>
+      </section>
+
+      <section id="setupView" class="panel view active">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Before the meeting</p>
+            <h2>Set up recording</h2>
+          </div>
+          <span id="supportBadge" class="badge neutral">Checking device</span>
+        </div>
+
+        <label>Meeting title
+          <input id="meetingTitle" maxlength="120" placeholder="Weekly planning meeting">
+        </label>
+        <div class="two-column">
+          <label>Language
+            <select id="language">
+              <option value="en">English</option>
+              <option value="auto">Detect automatically</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+            </select>
+          </label>
+          <label>Participants
+            <input id="participants" maxlength="300" placeholder="Maya, Alex, Jordan">
+          </label>
+        </div>
+        <label>Names, acronyms, and specialized terms
+          <textarea id="vocabulary" rows="2" maxlength="1000" placeholder="Project Orion, NIR, Acme Labs"></textarea>
+        </label>
+
+        <div class="placement-guide">
+          <strong>For the clearest transcript</strong>
+          <p>Place the phone uncovered near the center of the table. Reduce fan or music noise and avoid speaking over one another during decisions.</p>
+        </div>
+
+        <label class="consent-row">
+          <input id="consent" type="checkbox">
+          <span>Everyone in this meeting has agreed to be recorded.</span>
+        </label>
+
+        <div id="micTestResult" class="status-line" role="status">Run a microphone test before starting.</div>
+        <div class="button-row stacked-mobile">
+          <button id="testMic" class="secondary" type="button">Test microphone</button>
+          <button id="startRecording" class="record-button" type="button" disabled>
+            <span class="record-dot" aria-hidden="true"></span> Start recording
+          </button>
+        </div>
+
+        <div id="recoveryPanel" class="recovery" hidden>
+          <h3>Recovered meeting audio</h3>
+          <p id="recoveryText"></p>
+          <div class="button-row">
+            <button id="processRecovered" class="primary" type="button">Process recovered audio</button>
+            <button id="discardRecovered" class="danger-ghost" type="button">Delete it</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="recordingView" class="panel view" hidden>
+        <p class="eyebrow">Recording in progress</p>
+        <h2 id="recordingTitle">Meeting</h2>
+        <div class="timer" id="recordingTimer">00:00:00</div>
+        <div class="level-shell" aria-label="Microphone input level">
+          <div id="levelBar" class="level-bar"></div>
+        </div>
+        <div id="audioHealth" class="status-line good" role="status">Microphone active</div>
+        <p class="keep-open">Keep this app open and the screen awake. Switching apps or locking the phone may interrupt recording.</p>
+        <div class="recording-actions">
+          <button id="stopRecording" class="stop-button" type="button">Stop and create notes</button>
+        </div>
+      </section>
+
+      <section id="processingView" class="panel view" hidden>
+        <p class="eyebrow">Please keep this page open</p>
+        <h2>Creating meeting notes</h2>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <p id="processingStatus" class="processing-status" role="status">Preparing audio…</p>
+        <div id="segmentList" class="segment-list"></div>
+        <button id="retryProcessing" class="secondary" type="button" hidden>Retry failed step</button>
+      </section>
+
+      <section id="reviewView" class="panel view" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Review before sharing</p>
+            <h2>Meeting notes</h2>
+          </div>
+          <span id="reviewBadge" class="badge warning">Needs review</span>
+        </div>
+        <div id="reviewWarnings" class="warnings" hidden></div>
+        <div class="tabs" role="tablist">
+          <button id="notesTab" class="tab active" role="tab" aria-selected="true">Notes</button>
+          <button id="transcriptTab" class="tab" role="tab" aria-selected="false">Transcript</button>
+        </div>
+        <div id="notesPanel" class="tab-panel"></div>
+        <div id="transcriptPanel" class="tab-panel" hidden></div>
+        <label class="consent-row approval-row">
+          <input id="approveNotes" type="checkbox">
+          <span>I reviewed these notes and they are ready to share.</span>
+        </label>
+        <div class="button-row">
+          <button id="backToSetup" class="secondary" type="button">New meeting</button>
+          <button id="openShare" class="primary" type="button" disabled>Prepare for Discord</button>
+        </div>
+      </section>
+
+      <section id="shareView" class="panel view" hidden>
+        <p class="eyebrow">Discord ready</p>
+        <h2>Copy meeting notes</h2>
+        <p class="help">Each part stays below Discord’s ordinary 2,000-character limit.</p>
+        <div id="shareParts" class="share-parts"></div>
+        <div class="button-row">
+          <button id="copyFull" class="secondary" type="button">Copy full Markdown</button>
+          <button id="shareNewMeeting" class="primary" type="button">New meeting</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Audio and results stay on this device except while your selected backend processes them.</p>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

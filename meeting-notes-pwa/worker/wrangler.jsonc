@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meeting-notes-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://nickburum.github.io",
+    "NOTES_MODEL": "@cf/meta/llama-3.1-8b-instruct"
+  }
+}
